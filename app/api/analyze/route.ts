@@ -1,22 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PDFExtract } from "pdf.js-extract";
 import Groq from "groq-sdk";
 
-// استخراج النص من PDF
+// استيراد pdf-parse بشكل ديناميكي لتجنب مشاكل Edge Runtime
+// استخراج النص من PDF - طريقة مضمونة للعمل
 async function extractTextFromPDF(buffer: Buffer): Promise<string> {
-  const pdfExtract = new PDFExtract();
-  const data = await pdfExtract.extractBuffer(buffer, {});
-  
-  let fullText = "";
-  for (const page of data.pages) {
-    for (const content of page.content) {
-      fullText += content.str + " ";
+  try {
+    // استخدام require مباشرة مع المسار الكامل
+    const pdfParse = require('pdf-parse/lib/pdf-parse.js');
+    
+    const options = {
+      pagerender: undefined,
+      max: 0,
+      version: 'v1.10.100'
+    };
+    
+    const data = await pdfParse(buffer, options);
+    
+    if (!data || !data.text) {
+      throw new Error('No text extracted from PDF');
     }
-    fullText += "\n";
+    
+    const extractedText = data.text.trim();
+    console.log(`PDF extracted successfully: ${extractedText.length} characters`);
+    
+    if (extractedText.length === 0) {
+      throw new Error('Extracted text is empty');
+    }
+    
+    return extractedText;
+  } catch (error) {
+    console.error("PDF parsing error details:", error);
+    throw new Error(`Failed to extract text from PDF: ${(error as Error).message}`);
   }
-  return fullText.trim();
 }
-
 // اكتشاف لغة النص
 function detectLanguage(text: string): "ar" | "en" {
   const arabicChars = (text.match(/[\u0600-\u06FF]/g) || []).length;
@@ -28,7 +44,6 @@ function detectLanguage(text: string): "ar" | "en" {
 // ترجمة التوصيات من الإنجليزية إلى العربية
 function translateRecommendationsToArabic(recommendations: string[]): string[] {
   const translations: { [key: string]: string } = {
-    // General
     "Add quantifiable achievements with numbers": "أضف إنجازات قابلة للقياس بأرقام محددة",
     "Get relevant certifications": "احصل على شهادات مهنية ذات صلة",
     "Tailor your resume for each job application": "خصص سيرتك الذاتية لكل وظيفة تتقدم لها",
@@ -41,27 +56,18 @@ function translateRecommendationsToArabic(recommendations: string[]): string[] {
     "Add a professional summary at the top": "أضف ملخصاً مهنياً في الأعلى",
     "Use action verbs to start bullet points": "استخدم أفعال عمل لبدء النقاط",
     "Keep your resume to 1-2 pages": "احتفظ بسيرتك الذاتية في 1-2 صفحات",
-    
-    // Skills specific
     "Add more technical skills": "أضف المزيد من المهارات التقنية",
     "List both technical and soft skills": "أدرج المهارات التقنية والشخصية معاً",
     "Include frameworks and libraries": "ضمن الأطر والمكتبات التي تستخدمها",
     "Add development tools (Git, Docker, etc.)": "أضف أدوات التطوير (Git, Docker، إلخ)",
-    
-    // Achievements specific
     "Use numbers and percentages": "استخدم الأرقام والنسب المئوية",
     "Show impact of your work": "أظهر تأثير عملك",
     "Mention awards or recognition": "اذكر الجوائز أو التكريمات",
-    
-    // Default
     "Consider adding more details": "فكر في إضافة المزيد من التفاصيل",
   };
   
   return recommendations.map(rec => {
-    // ترجمة النص الكامل
     if (translations[rec]) return translations[rec];
-    
-    // ترجمة أجزاء من النص
     let translated = rec;
     for (const [en, ar] of Object.entries(translations)) {
       if (translated.includes(en)) {
@@ -77,12 +83,10 @@ function getMockAnalysis(resumeText: string, language: "ar" | "en") {
   const isArabic = language === "ar";
   const text = resumeText.toLowerCase();
   
-  // استخراج الاسم
   let name = isArabic ? "مرشح" : "Candidate";
   const nameMatch = resumeText.match(/^([A-Z][a-z]+ [A-Z][a-z]+)/m);
   if (nameMatch) name = nameMatch[1];
   
-  // استخراج سنوات الخبرة
   let years = 0;
   const yearPatterns = isArabic 
     ? [/(\d+)\s*(?:سنوات|سنين)/i, /خبرة\s*(\d+)/i]
@@ -97,7 +101,6 @@ function getMockAnalysis(resumeText: string, language: "ar" | "en") {
   }
   if (years === 0) years = 4;
   
-  // تحديد المجال
   let field = isArabic ? "تقني" : "Technology";
   if (text.match(/react|node|python|javascript|html|css|software|developer|web|frontend|backend/i)) field = isArabic ? "تطوير ويب" : "Web Development";
   else if (text.match(/طبيب|دكتور|تمريض|طبي|medical|doctor|nurse/i)) field = isArabic ? "طبي" : "Medical";
@@ -107,7 +110,6 @@ function getMockAnalysis(resumeText: string, language: "ar" | "en") {
   else if (text.match(/محاسب|accounting|finance|audit|tax/i)) field = isArabic ? "محاسبة ومالية" : "Accounting & Finance";
   else if (text.match(/معلم|تدريس|education|teacher|professor/i)) field = isArabic ? "تعليمي" : "Education";
   
-  // استخراج المهارات
   const allSkills: string[] = [];
   const skillKeywords = [
     "React", "Next.js", "TypeScript", "JavaScript", "Python", "Node.js", "Express",
@@ -124,15 +126,13 @@ function getMockAnalysis(resumeText: string, language: "ar" | "en") {
     }
   }
   
-  const skills = allSkills.length > 0 ? allSkills.slice(0, 12) : (isArabic ? ["React", "Node.js", "TypeScript"] : ["React", "Node.js", "TypeScript"]);
+  const skills = allSkills.length > 0 ? allSkills.slice(0, 12) : ["React", "Node.js", "TypeScript"];
   
-  // استخراج التعليم
   let education = isArabic ? "بكالوريوس" : "Bachelor's Degree";
   if (resumeText.match(/master|ms|mba/i)) education = isArabic ? "ماجستير" : "Master's Degree";
   else if (resumeText.match(/phd|doctorate/i)) education = isArabic ? "دكتوراه" : "PhD";
   else if (resumeText.match(/associate/i)) education = isArabic ? "دبلوم" : "Associate Degree";
   
-  // نقاط القوة والضعف
   const hasLeadership = resumeText.match(/lead|mentor|manage|senior|leadership|team lead/i);
   const hasAchievements = resumeText.match(/achievement|award|recognition|winner|first place|top performer/i);
   const hasQuantifiable = resumeText.match(/\d+%|\d+\s*(?:users|customers|projects|reduction|increase)/i);
@@ -147,7 +147,6 @@ function getMockAnalysis(resumeText: string, language: "ar" | "en") {
   if (strengths.length === 0) {
     strengths.push(isArabic ? "مهارات تقنية جيدة" : "Good technical skills");
     strengths.push(isArabic ? "خبرة عملية" : "Practical experience");
-    strengths.push(isArabic ? "التزام بالمواعيد" : "Commitment to deadlines");
   }
   
   const weaknesses = [];
@@ -236,16 +235,13 @@ async function analyzeWithGroq(resumeText: string, language: "ar" | "en") {
     const content = completion.choices[0]?.message?.content || "";
     console.log("Groq response received, length:", content.length);
     
-    // استخراج JSON من النص
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       try {
         const parsed = JSON.parse(jsonMatch[0]);
         
-        // معالجة التوصيات: إذا كانت اللغة عربية، ترجم التوصيات الإنجليزية
         let recommendations = Array.isArray(parsed.recommendations) ? parsed.recommendations : [];
         if (language === "ar" && recommendations.length > 0) {
-          // تحقق إذا كانت التوصيات بالإنجليزية
           const hasEnglish = recommendations.some((rec: string) => !/[\u0600-\u06FF]/.test(rec));
           if (hasEnglish) {
             recommendations = translateRecommendationsToArabic(recommendations);
@@ -292,20 +288,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Only PDF files are supported" }, { status: 400 });
     }
 
-    // استخراج النص من PDF
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     const extractedText = await extractTextFromPDF(buffer);
 
-    if (!extractedText || extractedText.length === 0) {
-      return NextResponse.json({ error: "No text found in PDF" }, { status: 400 });
+    if (!extractedText || extractedText.length < 50) {
+      return NextResponse.json({ error: "Could not extract text from PDF. Please ensure the PDF contains selectable text." }, { status: 400 });
     }
 
-    // اكتشاف لغة السيرة
     const language = detectLanguage(extractedText);
     console.log(`Detected language: ${language === "ar" ? "Arabic" : "English"}`);
+    console.log(`Extracted text length: ${extractedText.length} characters`);
 
-    // تحليل النص باستخدام Groq
     const analysis = await analyzeWithGroq(extractedText, language);
 
     return NextResponse.json({
