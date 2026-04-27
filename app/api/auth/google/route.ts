@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
-import { getSupabaseClient } from "../../../lib/supabase/client";
+import { createClient } from "@supabase/supabase-js";
 
 export async function GET() {
   try {
-    const supabase = getSupabaseClient();
+    // استخدام الرابط المباشر
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
     
-    // استخدم الرابط المباشر بدلاً من المتغير
     const redirectUrl = "https://ai-resume-analyzer-lemon-gamma.vercel.app/auth/callback";
     
     const { data, error } = await supabase.auth.signInWithOAuth({
