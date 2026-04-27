@@ -15,7 +15,9 @@ interface AnalysisResult {
   ats_score: number;
 }
 
-export default function SharedReportPage({ params }: { params: { id: string } }) {
+export default async function SharedReportPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +25,7 @@ export default function SharedReportPage({ params }: { params: { id: string } })
   useEffect(() => {
     const fetchSharedAnalysis = async () => {
       try {
-        const response = await fetch(`/api/share/${params.id}`);
+        const response = await fetch(`/api/share/${id}`);
         const data = await response.json();
 
         if (!response.ok) {
@@ -39,8 +41,9 @@ export default function SharedReportPage({ params }: { params: { id: string } })
     };
 
     fetchSharedAnalysis();
-  }, [params.id]);
+  }, [id]);
 
+  // باقي الكود كما هو دون تغيير...
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
