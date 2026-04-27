@@ -5,10 +5,13 @@ export async function GET() {
   try {
     const supabase = getSupabaseClient();
     
+    // استخدم الرابط المباشر بدلاً من المتغير
+    const redirectUrl = "https://ai-resume-analyzer-lemon-gamma.vercel.app/auth/callback";
+    
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
+        redirectTo: redirectUrl,
       },
     });
 
