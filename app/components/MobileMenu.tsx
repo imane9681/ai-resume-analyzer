@@ -22,11 +22,24 @@ export default function MobileMenu({ user, showDashboard, onDashboardClick, onLo
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${window.scrollY}px`;
+      document.body.style.width = "100%";
     } else {
+      const scrollY = document.body.style.top;
       document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY || "0") * -1);
+      }
     }
     return () => {
       document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
     };
   }, [isOpen]);
 
@@ -58,7 +71,7 @@ export default function MobileMenu({ user, showDashboard, onDashboardClick, onLo
         <Menu className="w-5 h-5 text-gray-700 dark:text-gray-300" />
       </button>
 
-      {/* الخلفية المعتمة */}
+      {/* الخلفية المعتمة - تغطي الشاشة بالكامل */}
       <div
         className={`fixed inset-0 bg-black/70 transition-all duration-300 z-[100] ${
           isOpen ? "opacity-100 visible" : "opacity-0 invisible pointer-events-none"
@@ -66,13 +79,21 @@ export default function MobileMenu({ user, showDashboard, onDashboardClick, onLo
         onClick={closeMenu}
       />
 
-      {/* القائمة الجانبية - مناسبة لارتفاع الشاشة بدون تجاوز */}
+      {/* القائمة الجانبية - بطول الشاشة بالكامل */}
       <div
-        className={`fixed top-0 left-0 w-[280px] h-full bg-white dark:bg-gray-900 shadow-2xl transition-transform duration-300 ease-out z-[101] flex flex-col ${
+        className={`fixed top-0 left-0 w-[280px] bg-white dark:bg-gray-900 shadow-2xl transition-transform duration-300 ease-out z-[101] flex flex-col ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
+        style={{
+          
+          height: "100dvh", // للمتصفحات الحديثة على الهواتف
+          maxHeight: "100vh",
+          
+          top: 0,
+          bottom: 0,
+        }}
       >
-        {/* رأس القائمة - ثابت في الأعلى */}
+        {/* رأس القائمة */}
         <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-green-600 rounded-lg flex items-center justify-center">
@@ -90,7 +111,7 @@ export default function MobileMenu({ user, showDashboard, onDashboardClick, onLo
           </button>
         </div>
 
-        {/* معلومات المستخدم - ثابتة إذا وجدت */}
+        {/* معلومات المستخدم */}
         {user && (
           <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20">
             <div className="flex items-center gap-3">
@@ -128,13 +149,12 @@ export default function MobileMenu({ user, showDashboard, onDashboardClick, onLo
             </button>
           )}
 
-          {/* فصل بين الروابط والإعدادات */}
+          {/* الإعدادات */}
           <div className="pt-4 mt-2 border-t border-gray-200 dark:border-gray-700">
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 px-2">
               {t("preferences") || "Preferences"}
             </p>
             
-            {/* إعدادات السمة واللغة */}
             <div className="space-y-2">
               <div className="flex items-center justify-between p-3 rounded-xl bg-gray-100 dark:bg-gray-800">
                 <span className="text-sm text-gray-700 dark:text-gray-300">
@@ -151,9 +171,6 @@ export default function MobileMenu({ user, showDashboard, onDashboardClick, onLo
               </div>
             </div>
           </div>
-          
-          {/* مساحة فارغة صغيرة في الأسفل */}
-          <div className="h-4"></div>
         </div>
 
         {/* زر تسجيل الخروج/الدخول - ثابت في الأسفل */}
