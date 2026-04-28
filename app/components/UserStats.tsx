@@ -398,7 +398,7 @@ export default function UserStats({ analyses }: UserStatsProps) {
           </div>
           <div style={{ width: '100%', height: chartHeight }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={skillDistribution} layout="vertical" margin={{ left: isMobile ? 35 : 45, right: isMobile ? 5 : 10, top: 5, bottom: 5 }}>
+              <BarChart data={skillDistribution} layout="vertical" margin={{ left: isMobile ? 5 : 5 , right: isMobile ? 5 : 10, top: 5, bottom: 5 }}>
                 <XAxis 
                   type="number" 
                   axisLine={false}
