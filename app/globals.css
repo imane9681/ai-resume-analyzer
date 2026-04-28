@@ -109,3 +109,49 @@ body {
   0% { width: 0%; }
   100% { width: 100%; }
 }
+
+/* تحسين القائمة الجانبية للهواتف */
+@media (max-width: 768px) {
+  /* ضمان أن القائمة الجانبية تأخذ الارتفاع الصحيح */
+  .fixed.left-0 {
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow: hidden !important;
+  }
+  
+  /* تحسين التمرير داخل القائمة */
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  
+  /* إخفاء شريط التمرير في Chrome/Safari مع الحفاظ على الوظيفة */
+  .overflow-y-auto::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  .overflow-y-auto::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+  }
+  
+  .overflow-y-auto::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 10px;
+  }
+  
+  .dark .overflow-y-auto::-webkit-scrollbar-track {
+    background: #374151;
+  }
+  
+  .dark .overflow-y-auto::-webkit-scrollbar-thumb {
+    background: #6b7280;
+  }
+}
+
+/* دعم الشاشات الصغيرة جداً */
+@media (max-width: 380px) {
+  .fixed.left-0 {
+    width: 260px !important;
+  }
+}
