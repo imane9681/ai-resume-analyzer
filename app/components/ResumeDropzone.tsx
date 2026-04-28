@@ -44,37 +44,37 @@ export default function ResumeDropzone({ onFileAccepted, isLoading }: ResumeDrop
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto" dir={dir}>
+    <div className="w-full max-w-2xl mx-auto px-3 sm:px-0" dir={dir}>
       <div
         {...getRootProps()}
         className={`
-          border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all
+          border-2 border-dashed rounded-xl p-6 sm:p-8 text-center cursor-pointer transition-all
           ${isDragActive ? "border-green-500 bg-green-50 dark:bg-green-900/20" : "border-gray-300 dark:border-gray-700"}
-          ${isLoading ? "opacity-50 cursor-not-allowed" : "hover:border-green-400"}
+          ${isLoading ? "opacity-50 cursor-not-allowed" : "hover:border-green-400 active:scale-[0.99]"}
         `}
       >
         <input {...getInputProps()} />
-        <Upload className="w-12 h-12 mx-auto text-gray-400 dark:text-gray-500 mb-4" />
+        <Upload className="w-10 h-10 sm:w-12 sm:h-12 mx-auto text-gray-400 dark:text-gray-500 mb-3 sm:mb-4" />
         {isDragActive ? (
-          <p className="text-lg text-gray-700 dark:text-gray-300">{t("drop_here") || "Drop your resume here..."}</p>
+          <p className="text-sm sm:text-lg text-gray-700 dark:text-gray-300">{t("drop_here") || "Drop your resume here..."}</p>
         ) : (
           <div>
-            <p className="text-lg mb-2 text-gray-700 dark:text-gray-300">{t("drag_drop") || "Drag & drop your resume here"}</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{t("click_to_select") || "or click to select a file"}</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-4">{t("file_types") || "PDF, DOC, DOCX (Max 5MB)"}</p>
+            <p className="text-sm sm:text-lg mb-1 sm:mb-2 text-gray-700 dark:text-gray-300">{t("drag_drop") || "Drag & drop your resume here"}</p>
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t("click_to_select") || "or click to select a file"}</p>
+            <p className="text-[10px] sm:text-xs text-gray-400 dark:text-gray-500 mt-3 sm:mt-4">{t("file_types") || "PDF, DOC, DOCX (Max 5MB)"}</p>
           </div>
         )}
       </div>
 
       {file && (
-        <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-green-600 dark:text-green-400" />
-            <span className="text-sm text-gray-700 dark:text-gray-300">{file.name}</span>
-            <span className="text-xs text-gray-500 dark:text-gray-400">{(file.size / 1024).toFixed(0)} KB</span>
+        <div className="mt-3 sm:mt-4 p-2.5 sm:p-3 bg-green-50 dark:bg-green-900/20 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
+            <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+            <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 truncate">{file.name}</span>
+            <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">{(file.size / 1024).toFixed(0)} KB</span>
           </div>
-          <button onClick={removeFile} className="text-red-500 cursor-pointer hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
-            <X className="w-4 h-4" />
+          <button onClick={removeFile} className="text-red-500 cursor-pointer hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 flex-shrink-0">
+            <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
         </div>
       )}

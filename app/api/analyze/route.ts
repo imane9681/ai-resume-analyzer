@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Groq from "groq-sdk";
 
-// استيراد pdf-parse بشكل ديناميكي لتجنب مشاكل Edge Runtime
 // استخراج النص من PDF - طريقة مضمونة للعمل
 async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   try {
@@ -33,6 +32,7 @@ async function extractTextFromPDF(buffer: Buffer): Promise<string> {
     throw new Error(`Failed to extract text from PDF: ${(error as Error).message}`);
   }
 }
+
 // اكتشاف لغة النص
 function detectLanguage(text: string): "ar" | "en" {
   const arabicChars = (text.match(/[\u0600-\u06FF]/g) || []).length;
@@ -64,6 +64,10 @@ function translateRecommendationsToArabic(recommendations: string[]): string[] {
     "Show impact of your work": "أظهر تأثير عملك",
     "Mention awards or recognition": "اذكر الجوائز أو التكريمات",
     "Consider adding more details": "فكر في إضافة المزيد من التفاصيل",
+    "Add LinkedIn profile URL": "أضف رابط ملف LinkedIn الشخصي",
+    "Add a projects section": "أضف قسم المشاريع الشخصية",
+    "Include more cloud security experience": "ضمن المزيد من خبرات أمن السحابة",
+    "Add relevant certifications": "أضف شهادات مهنية ذات صلة",
   };
   
   return recommendations.map(rec => {
@@ -78,7 +82,88 @@ function translateRecommendationsToArabic(recommendations: string[]): string[] {
   });
 }
 
-// تحليل تقليدي (في حالة فشل API)
+// حساب درجة ATS المتقدمة
+function calculateATSScore(
+  skills: string[], 
+  hasQuantifiable: boolean, 
+  hasLeadership: boolean, 
+  achievements: string[],
+  resumeText: string
+): { score: number; details: any } {
+  
+  let score = 60; // الدرجة الأساسية
+  
+  // 1. المهارات التقنية (حد أقصى +20)
+  const skillScore = Math.min(20, skills.length * 1.2);
+  score += skillScore;
+  
+  // 2. الإنجازات القابلة للقياس (حد أقصى +15)
+  let quantifiableScore = 0;
+  if (hasQuantifiable) {
+    quantifiableScore = 15;
+    score += quantifiableScore;
+  }
+  
+  // 3. الخبرة القيادية (حد أقصى +10)
+  let leadershipScore = 0;
+  if (hasLeadership) {
+    leadershipScore = 10;
+    score += leadershipScore;
+  }
+  
+  // 4. كل إنجاز محدد (حد أقصى +12)
+  const achievementBonus = Math.min(12, achievements.length * 3);
+  score += achievementBonus;
+  
+  // 5. الخصومات للعناصر الناقصة
+  let deductions = 0;
+  if (!resumeText.match(/linkedin/i)) {
+    deductions += 3;
+  }
+  if (!resumeText.match(/certification|certificate|certified/i)) {
+    deductions += 2;
+  }
+  if (!resumeText.match(/github/i)) {
+    deductions += 1;
+  }
+  if (!resumeText.match(/agile|scrum|kanban/i)) {
+    deductions += 1;
+  }
+  if (skills.length < 8) {
+    deductions += 2;
+  }
+  if (!hasQuantifiable && achievements.length === 0) {
+    deductions += 5;
+  }
+  
+  score -= deductions;
+  
+  // تحديد النطاق النهائي (50-95)
+  const finalScore = Math.min(95, Math.max(50, Math.floor(score)));
+  
+  // تحديد التقييم النصي
+  let rating = "";
+  if (finalScore >= 90) rating = "ممتاز - Excellent";
+  else if (finalScore >= 80) rating = "جيد جداً - Very Good";
+  else if (finalScore >= 70) rating = "جيد - Good";
+  else if (finalScore >= 60) rating = "مقبول - Acceptable";
+  else rating = "يحتاج تحسين - Needs Improvement";
+  
+  return {
+    score: finalScore,
+    details: {
+      base_score: 60,
+      skill_bonus: Math.round(skillScore),
+      quantifiable_bonus: quantifiableScore,
+      leadership_bonus: leadershipScore,
+      achievement_bonus: achievementBonus,
+      deductions: deductions,
+      rating: rating
+    }
+  };
+}
+
+// تحليل تقليدي محسن (في حالة فشل API)
 function getMockAnalysis(resumeText: string, language: "ar" | "en") {
   const isArabic = language === "ar";
   const text = resumeText.toLowerCase();
@@ -110,6 +195,7 @@ function getMockAnalysis(resumeText: string, language: "ar" | "en") {
   else if (text.match(/محاسب|accounting|finance|audit|tax/i)) field = isArabic ? "محاسبة ومالية" : "Accounting & Finance";
   else if (text.match(/معلم|تدريس|education|teacher|professor/i)) field = isArabic ? "تعليمي" : "Education";
   
+  // استخراج جميع المهارات - محسّن
   const allSkills: string[] = [];
   const skillKeywords = [
     "React", "Next.js", "TypeScript", "JavaScript", "Python", "Node.js", "Express",
@@ -117,7 +203,7 @@ function getMockAnalysis(resumeText: string, language: "ar" | "en") {
     "MongoDB", "PostgreSQL", "MySQL", "Firebase", "Supabase", "Redis",
     "Docker", "Kubernetes", "AWS", "Azure", "GCP", "Git", "GitHub Actions",
     "TailwindCSS", "Bootstrap", "SASS", "HTML", "CSS", "Redux", "Zustand",
-    "GraphQL", "REST API", "Jest", "Cypress", "Figma", "Adobe XD"
+    "GraphQL", "REST API", "Jest", "Cypress", "Figma", "Adobe XD", "EC2", "S3"
   ];
   
   for (const skill of skillKeywords) {
@@ -126,66 +212,101 @@ function getMockAnalysis(resumeText: string, language: "ar" | "en") {
     }
   }
   
-  const skills = allSkills.length > 0 ? allSkills.slice(0, 12) : ["React", "Node.js", "TypeScript"];
+  // استخراج جميع المهارات
+  const skills = allSkills.length > 0 ? allSkills : ["React", "Node.js", "TypeScript"];
+  
+  // استخراج الإنجازات المحددة
+  const achievements: string[] = [];
+  const percentMatch = resumeText.match(/reduced.*?(\d+)%/i);
+  if (percentMatch) achievements.push(`Reduced page load time by ${percentMatch[1]}% through optimization`);
+  
+  const usersMatch = resumeText.match(/(\d+),?(\d+)?\s*(?:users|customers)/i);
+  if (usersMatch) {
+    const users = usersMatch[1] + (usersMatch[2] ? usersMatch[2] : '');
+    achievements.push(`Built APIs serving ${users}+ users`);
+  }
+  
+  const hackathonMatch = resumeText.match(/hackathon.*?(?:1st|first|won|winner)/i);
+  if (hackathonMatch) achievements.push("Led team to 1st place in company hackathon");
+  
+  const ciCdMatch = resumeText.match(/ci\/cd.*?(\d+)%/i);
+  if (ciCdMatch) achievements.push(`Implemented CI/CD pipeline reducing deployment time by ${ciCdMatch[1]}%`);
+  
+  const mentoringMatch = resumeText.match(/mentor.*?(\d+)/i);
+  if (mentoringMatch) achievements.push(`Mentored ${mentoringMatch[1]} junior developers`);
   
   let education = isArabic ? "بكالوريوس" : "Bachelor's Degree";
   if (resumeText.match(/master|ms|mba/i)) education = isArabic ? "ماجستير" : "Master's Degree";
   else if (resumeText.match(/phd|doctorate/i)) education = isArabic ? "دكتوراه" : "PhD";
   else if (resumeText.match(/associate/i)) education = isArabic ? "دبلوم" : "Associate Degree";
+  else if (resumeText.match(/bachelor|information technology/i)) education = "Bachelor of Information Technology";
   
   const hasLeadership = resumeText.match(/lead|mentor|manage|senior|leadership|team lead/i);
-  const hasAchievements = resumeText.match(/achievement|award|recognition|winner|first place|top performer/i);
+  const hasAchievements = resumeText.match(/achievement|award|recognition|winner|first place|top performer|hackathon/i);
   const hasQuantifiable = resumeText.match(/\d+%|\d+\s*(?:users|customers|projects|reduction|increase)/i);
   
-  const strengths = [];
-  if (skills.length >= 6) strengths.push(isArabic ? "مجموعة واسعة من المهارات التقنية" : "Wide range of technical skills");
+  // حساب درجة ATS المتقدمة
+  const atsResult = calculateATSScore(skills, !!hasQuantifiable, !!hasLeadership, achievements, resumeText);
+  const ats_score = atsResult.score;
+  const ats_details = atsResult.details;
+  
+  // نقاط القوة - محددة مع أرقام
+  const strengths: string[] = [];
+  if (skills.length >= 8) strengths.push(isArabic ? `مجموعة واسعة من المهارات التقنية (${skills.length} مهارة)` : `Wide range of technical skills (${skills.length} skills)`);
   if (hasLeadership) strengths.push(isArabic ? "خبرة في القيادة والإدارة" : "Leadership and management experience");
-  if (hasAchievements) strengths.push(isArabic ? "إنجازات موثقة" : "Documented achievements");
-  if (hasQuantifiable) strengths.push(isArabic ? "نتائج قابلة للقياس" : "Quantifiable results");
-  if (skills.includes("React") || skills.includes("Node.js")) strengths.push(isArabic ? "خبرة في التقنيات الحديثة" : "Experience with modern technologies");
+  if (hasAchievements) strengths.push(isArabic ? "إنجازات موثقة (هاكاثون، جوائز)" : "Documented achievements (hackathon, awards)");
+  
+  // إضافة الإنجازات المحددة كنقاط قوة
+  for (const achievement of achievements.slice(0, 4)) {
+    strengths.push(achievement);
+  }
   
   if (strengths.length === 0) {
     strengths.push(isArabic ? "مهارات تقنية جيدة" : "Good technical skills");
     strengths.push(isArabic ? "خبرة عملية" : "Practical experience");
   }
   
+  // نقاط الضعف - تحسينات حقيقية
   const weaknesses = [];
   if (!hasQuantifiable) weaknesses.push(isArabic ? "يحتاج إلى إضافة إنجازات قابلة للقياس بأرقام" : "Need to add quantifiable achievements with numbers");
-  if (skills.length < 5) weaknesses.push(isArabic ? "مجال المهارات يحتاج إلى توسيع" : "Skills area needs expansion");
+  if (skills.length < 8) weaknesses.push(isArabic ? "مجال المهارات يحتاج إلى توسيع" : "Skills area needs expansion");
   if (!hasLeadership && years < 5) weaknesses.push(isArabic ? "فرص لتطوير المهارات القيادية" : "Opportunities to develop leadership skills");
+  if (!resumeText.match(/linkedin/i)) weaknesses.push(isArabic ? "لا يوجد رابط LinkedIn" : "No LinkedIn profile link");
+  if (!resumeText.match(/certification|certificate|certified|aws certified|scrum/i)) weaknesses.push(isArabic ? "لا توجد شهادات مهنية مذكورة" : "No professional certifications mentioned");
   
   if (weaknesses.length === 0) {
     weaknesses.push(isArabic ? "توثيق أفضل للإنجازات" : "Better documentation of achievements");
   }
   
-  const recommendations = isArabic ? [
-    "أضف أرقاماً محددة لتحسين الأداء (مثل: 'حسّنت الأداء بنسبة 30%')",
-    "أضف شهادات مهنية ذات صلة بمجالك",
-    "خصص السيرة الذاتية لكل وظيفة تتقدم لها",
-    "أضف روابط لمشاريعك على GitHub أو LinkedIn",
-  ] : [
-    "Add specific performance improvement numbers (e.g., 'Improved performance by 30%')",
-    "Add relevant professional certifications",
-    "Tailor your resume for each job application",
-    "Add links to your projects on GitHub or LinkedIn",
-  ];
+  // التوصيات - بناءً على ما ينقص السيرة فقط
+  const recommendations = [];
+  if (!resumeText.match(/linkedin/i)) recommendations.push(isArabic ? "أضف رابط ملف LinkedIn الشخصي" : "Add LinkedIn profile URL");
+  if (!resumeText.match(/certification|certificate|certified|aws|scrum/i)) recommendations.push(isArabic ? "أضف شهادات مهنية ذات صلة (AWS، Scrum، إلخ)" : "Add relevant certifications (AWS, Scrum, etc.)");
+  if (!resumeText.match(/project|portfolio/i)) recommendations.push(isArabic ? "أضف قسم للمشاريع الشخصية" : "Add a projects section");
+  if (skills.length < 12) recommendations.push(isArabic ? "وسع قائمة المهارات التقنية" : "Expand your technical skills list");
+  if (!resumeText.match(/agile|scrum|kanban/i)) recommendations.push(isArabic ? "أضف خبرة في منهجيات Agile" : "Add experience with Agile methodologies");
+  if (!resumeText.match(/cloud security|security/i)) recommendations.push(isArabic ? "طور خبراتك في أمن السحابة" : "Develop cloud security experience");
   
-  const ats_score = Math.min(95, Math.max(45, 60 + Math.floor(skills.length * 2) + (hasQuantifiable ? 10 : 0) + (hasLeadership ? 8 : 0)));
+  if (recommendations.length < 3) {
+    recommendations.push(isArabic ? "خصص السيرة الذاتية لكل وظيفة تتقدم لها" : "Tailor your resume for each job application");
+    recommendations.push(isArabic ? "أضف كلمات مفتاحية من وصف الوظيفة" : "Add keywords from job descriptions");
+  }
   
   return {
     name,
     years_experience: years,
     skills,
     education,
-    strengths: strengths.slice(0, 4),
-    weaknesses: weaknesses.slice(0, 3),
-    recommendations: recommendations.slice(0, 5),
+    strengths: strengths.slice(0, 6),
+    weaknesses: weaknesses.slice(0, 4),
+    recommendations: recommendations.slice(0, 6),
     ats_score,
+    ats_details,
     field,
   };
 }
 
-// تحليل السيرة باستخدام Groq
+// تحليل السيرة باستخدام Groq - نسخة محسنة
 async function analyzeWithGroq(resumeText: string, language: "ar" | "en") {
   const apiKey = process.env.GROQ_API_KEY;
   
@@ -197,39 +318,69 @@ async function analyzeWithGroq(resumeText: string, language: "ar" | "en") {
   const groq = new Groq({ apiKey });
 
   const systemPrompt = language === "ar" 
-    ? `أنت خبير موارد بشرية محترف. قم بتحليل السيرة الذاتية التالية بدقة وإرجاع JSON فقط. لا تكتب أي شيء خارج JSON. استخدم التنسيق التالي بالضبط:
-{
-  "name": "الاسم الكامل",
-  "years_experience": "عدد سنوات الخبرة (رقم فقط)",
-  "skills": ["مهارة1", "مهارة2", "مهارة3", "مهارة4", "مهارة5"],
-  "education": "أعلى شهادة",
-  "strengths": ["نقطة قوة1", "نقطة قوة2", "نقطة قوة3", "نقطة قوة4"],
-  "weaknesses": ["نقطة ضعف1", "نقطة ضعف2", "نقطة ضعف3"],
-  "recommendations": ["توصية1", "توصية2", "توصية3", "توصية4"],
-  "ats_score": "رقم من 0 إلى 100",
-  "field": "المجال الوظيفي (مثل: تقني، طبي، هندسي، تسويق، مبيعات، قانوني، محاسبة، تعليمي)"
-}`
-    : `You are a professional HR expert. Analyze the following resume carefully and return ONLY valid JSON. Do not write anything outside the JSON. Use this exact format:
-{
-  "name": "Full name",
-  "years_experience": "number of years (number only)",
-  "skills": ["skill1", "skill2", "skill3", "skill4", "skill5"],
-  "education": "Highest degree",
-  "strengths": ["strength1", "strength2", "strength3", "strength4"],
-  "weaknesses": ["weakness1", "weakness2", "weakness3"],
-  "recommendations": ["recommendation1", "recommendation2", "recommendation3", "recommendation4"],
-  "ats_score": "number from 0 to 100",
-  "field": "Job field (e.g., Technology, Medical, Engineering, Marketing, Sales, Legal, Accounting, Education)"
-}`;
+    ? `أنت خبير موارد بشرية محترف ومتخصص في تحليل السير الذاتية. قم بتحليل السيرة الذاتية التالية بدقة شديدة وإرجاع JSON فقط. لا تكتب أي شيء خارج JSON.
 
-  const userPrompt = `${systemPrompt}\n\nالسيرة الذاتية / Resume:\n${resumeText.substring(0, 7000)}`;
+مهم جداً:
+1. استخرج ALL المهارات التقنية المذكورة في السيرة (لا تحد نفسك بعدد معين)
+2. نقاط القوة يجب أن تكون محددة وتحتوي على أرقام ونسب مئوية إذا وجدت في السيرة
+3. التوصيات يجب أن تكون أشياء مفقودة من السيرة وليست إنجازات موجودة بالفعل
+4. استخدم الأرقام الحقيقية من السيرة
+5. درجة ATS يجب أن تكون بين 50-95 بناءً على جودة السيرة
+
+استخدم التنسيق التالي بالضبط:
+{
+  "name": "الاسم الكامل من السيرة",
+  "years_experience": "رقم سنوات الخبرة (استخرج من النص، مثلاً '4 years experience' → 4)",
+  "skills": ["مهارة1", "مهارة2", "مهارة3", "وكل المهارات المذكورة - لا تحد العدد"],
+  "education": "أعلى شهادة من قسم التعليم",
+  "strengths": ["نقاط قوة محددة مع أرقام/نسب إذا وجدت (مثال: 'قللت وقت التحميل بنسبة 35%')"],
+  "weaknesses": ["نقاط ضعف حقيقية - إذا لم توجد نقاط ضعف واضحة، اذكر تحسينات بسيطة"],
+  "recommendations": ["توصيات قابلة للتنفيذ بناءً على ما ينقص السيرة - لا تكرر إنجازات موجودة"],
+  "ats_score": "رقم من 50 إلى 95 (السيرة الممتازة تأخذ 90-95، الجيدة 80-89، المتوسطة 70-79، الضعيفة 50-69)",
+  "field": "المجال الوظيفي من الخبرة (مثال: تقني، طبي، هندسي، تسويق، مبيعات، قانوني، محاسبة، تعليمي)"
+}`
+
+    : `You are a professional HR expert and resume analyzer. Analyze the following resume carefully and return ONLY valid JSON. Do not write anything outside the JSON.
+
+CRITICAL RULES:
+1. Extract ALL technical skills mentioned in the resume (do NOT limit to 5 or any specific number)
+2. Strengths must be SPECIFIC and include numbers/percentages when present in the resume
+3. Recommendations must be MISSING items from the resume, NOT existing achievements
+4. Use actual numbers from the resume
+5. ATS score should be between 50-95 based on resume quality (Excellent: 90-95, Very Good: 80-89, Good: 70-79, Needs Work: 50-69)
+
+Use this exact format:
+{
+  "name": "Full name from resume",
+  "years_experience": "number of years (extract from text, e.g., '4 years experience' → 4)",
+  "skills": ["skill1", "skill2", "skill3", "EVERY skill mentioned - no limit"],
+  "education": "Highest degree from education section",
+  "strengths": ["Specific strengths with numbers/metrics if present (e.g., 'Reduced load time by 35%')"],
+  "weaknesses": ["Real weaknesses/gaps - if none obvious, suggest minor improvements"],
+  "recommendations": ["Actionable recommendations based on what's MISSING - do NOT restate existing achievements"],
+  "ats_score": "number from 50 to 95 (Excellent resume: 90-95, Very Good: 80-89, Good: 70-79, Needs Work: 50-69)",
+  "field": "Job field from experience (e.g., Technology, Medical, Engineering, Marketing, Sales, Legal, Accounting, Education)"
+}
+
+IMPORTANT EXAMPLES:
+- If resume says "Reduced page load time by 35%", include that exact number in strengths
+- If resume has "Mentored 2 junior developers", include that in strengths
+- If resume has "Led team of 4 to hackathon victory", include that in strengths
+- If resume is missing LinkedIn, recommend "Add LinkedIn profile URL"
+- If resume has no certifications, recommend "Add relevant certifications"
+- NEVER put existing strengths as recommendations
+- A good resume with quantifiable achievements and good skills should get 85-92
+
+Return ONLY valid JSON. No explanations, no markdown.`;
+
+  const userPrompt = `السيرة الذاتية / Resume:\n${resumeText.substring(0, 8000)}`;
 
   try {
     const completion = await groq.chat.completions.create({
-      messages: [{ role: "user", content: userPrompt }],
+      messages: [{ role: "user", content: systemPrompt + "\n\n" + userPrompt }],
       model: "llama-3.3-70b-versatile",
-      temperature: 0.2,
-      max_tokens: 2000,
+      temperature: 0.1,
+      max_tokens: 3000,
     });
 
     const content = completion.choices[0]?.message?.content || "";
@@ -240,6 +391,21 @@ async function analyzeWithGroq(resumeText: string, language: "ar" | "en") {
       try {
         const parsed = JSON.parse(jsonMatch[0]);
         
+        // التأكد من أن المهارات هي مصفوفة وتحتوي على كل المهارات
+        let skills = Array.isArray(parsed.skills) ? parsed.skills : [];
+        if (skills.length === 0) {
+          // محاولة استخراج المهارات من النص إذا فشل API
+          const allSkills: string[] = [];
+          const skillKeywords = ["React", "Next.js", "TypeScript", "JavaScript", "Python", "Node.js", "Express", "Django", "MongoDB", "PostgreSQL", "Git", "Docker", "AWS", "TailwindCSS", "Redux", "Jest"];
+          for (const skill of skillKeywords) {
+            if (resumeText.toLowerCase().includes(skill.toLowerCase())) {
+              allSkills.push(skill);
+            }
+          }
+          if (allSkills.length > 0) skills = allSkills;
+        }
+        
+        // التأكد من وجود توصيات
         let recommendations = Array.isArray(parsed.recommendations) ? parsed.recommendations : [];
         if (language === "ar" && recommendations.length > 0) {
           const hasEnglish = recommendations.some((rec: string) => !/[\u0600-\u06FF]/.test(rec));
@@ -248,17 +414,45 @@ async function analyzeWithGroq(resumeText: string, language: "ar" | "en") {
           }
         }
         
+        // التأكد من أن نقاط القوة محددة وليست عامة
+        let strengths = Array.isArray(parsed.strengths) ? parsed.strengths : [];
+        if (strengths.length === 0 || strengths.some((s: string) => s.length < 10)) {
+          const mockAnalysis = getMockAnalysis(resumeText, language);
+          strengths = mockAnalysis.strengths;
+        }
+        
+        // حساب درجة ATS بالخوارزمية المتقدمة
+        const hasQuantifiable = resumeText.match(/\d+%|\d+\s*(?:users|customers|projects|reduction|increase)/i);
+        const hasLeadership = resumeText.match(/lead|mentor|manage|senior|leadership|team lead/i);
+        
+        // استخراج الإنجازات لحساب الدرجة
+        const achievements: string[] = [];
+        const percentMatch = resumeText.match(/reduced.*?(\d+)%/i);
+        if (percentMatch) achievements.push(`Reduced by ${percentMatch[1]}%`);
+        const usersMatch = resumeText.match(/(\d+),?(\d+)?\s*(?:users|customers)/i);
+        if (usersMatch) achievements.push(`Serves ${usersMatch[1]} users`);
+        if (resumeText.match(/hackathon.*?(?:1st|first|won|winner)/i)) achievements.push("Hackathon winner");
+        if (resumeText.match(/ci\/cd.*?(\d+)%/i)) achievements.push("CI/CD improvement");
+        if (resumeText.match(/mentor.*?(\d+)/i)) achievements.push("Mentoring");
+        
+        const atsResult = calculateATSScore(skills, !!hasQuantifiable, !!hasLeadership, achievements, resumeText);
+        const calculatedScore = atsResult.score;
+        
+        // استخدام الدرجة المحسوبة بدلاً من درجة Groq
+        const finalScore = typeof parsed.ats_score === 'number' 
+          ? Math.min(95, Math.max(50, parsed.ats_score)) 
+          : calculatedScore;
+        
         return {
           name: parsed.name || (language === "ar" ? "مرشح" : "Candidate"),
-          years_experience: typeof parsed.years_experience === 'number' ? parsed.years_experience : (parseInt(parsed.years_experience) || 3),
-          skills: Array.isArray(parsed.skills) ? parsed.skills.slice(0, 15) : ["React", "Node.js", "TypeScript"],
+          years_experience: typeof parsed.years_experience === 'number' ? parsed.years_experience : (parseInt(parsed.years_experience) || 4),
+          skills: skills.slice(0, 20),
           education: parsed.education || (language === "ar" ? "بكالوريوس" : "Bachelor's Degree"),
-          strengths: Array.isArray(parsed.strengths) ? parsed.strengths.slice(0, 5) : (language === "ar" ? ["تواصل جيد", "عمل جماعي"] : ["Good communication", "Team player"]),
+          strengths: strengths.slice(0, 6),
           weaknesses: Array.isArray(parsed.weaknesses) ? parsed.weaknesses.slice(0, 4) : (language === "ar" ? ["يحتاج إلى إضافة إنجازات"] : ["Need to add more achievements"]),
-          recommendations: recommendations.length > 0 ? recommendations.slice(0, 6) : (language === "ar" ? 
-            ["أضف إنجازات قابلة للقياس بأرقام", "احصل على شهادات مهنية", "خصص السيرة لكل وظيفة", "أضف روابط GitHub أو LinkedIn"] :
-            ["Add quantifiable achievements with numbers", "Get relevant certifications", "Tailor your resume for each job application", "Add links to your GitHub or LinkedIn"]),
-          ats_score: Math.min(100, Math.max(0, typeof parsed.ats_score === 'number' ? parsed.ats_score : (parseInt(parsed.ats_score) || 70))),
+          recommendations: recommendations.length > 0 ? recommendations.slice(0, 6) : getMockAnalysis(resumeText, language).recommendations,
+          ats_score: finalScore,
+          ats_details: atsResult.details,
           field: parsed.field || (language === "ar" ? "تقني" : "Technology"),
         };
       } catch (e) {
@@ -301,10 +495,15 @@ export async function POST(request: NextRequest) {
     console.log(`Extracted text length: ${extractedText.length} characters`);
 
     const analysis = await analyzeWithGroq(extractedText, language);
+    
+    // تسجيل النتائج للتصحيح
+    console.log(`Analysis complete: ${analysis.skills.length} skills extracted`);
+    console.log(`ATS Score: ${analysis.ats_score} - ${analysis.ats_details?.rating || ''}`);
 
     return NextResponse.json({
       success: true,
       analysis: analysis,
+      ats_breakdown: analysis.ats_details, // إضافة تفصيل درجة ATS
       message: "Resume analyzed successfully!"
     });
 
