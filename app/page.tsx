@@ -504,7 +504,7 @@ useEffect(() => {
               </div>
             </div>
           </div>
-          <h1 className={`${isMobile ? 'text-3xl' : 'text-5xl md:text-6xl'} font-extrabold bg-gradient-to-r from-green-600 via-emerald-500 to-green-600 bg-clip-text text-transparent ${isMobile ? 'mb-2' : 'mb-4'} px-2`}>
+          <h1 className={`${isMobile ? 'text-3xl' : 'text-5xl md:text-6xl'} font-extrabold bg-gradient-to-r from-green-600 via-emerald-500 to-green-600 bg-clip-text text-transparent ${isMobile ? 'mb-2' : 'mb-4'} px-2 leading-normal`}>
             {t("title")}
           </h1>
           <p className={`text-gray-600 dark:text-gray-300 ${isMobile ? 'text-sm' : 'text-lg'} max-w-2xl mx-auto px-4`}>
