@@ -261,11 +261,11 @@ export default function UserStats({ analyses }: UserStatsProps) {
       </div>
 
       {/* Stats Cards - 2x2 على الهواتف، 4x1 على الشاشات الكبيرة */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
         
         {/* Average Score Card */}
         <div className="relative overflow-hidden rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer bg-gradient-to-br from-[#34D19C]/80 to-[#2BAF7E]/80">
-          <div className="absolute bottom-[-90px] right-[-80px] w-[200px] h-[200px] rounded-full bg-white/20"></div>
+          <div className="absolute bottom-[-50px] right-[-50px] w-[120px] h-[120px] sm:bottom-[-90px] sm:right-[-80px] sm:w-[200px] sm:h-[200px] rounded-full bg-white/20"></div>
           <div className="relative z-10">
             <div className="flex items-center gap-1.5 sm:gap-3 mb-2 sm:mb-3">
               <div className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-white/20">
@@ -283,7 +283,7 @@ export default function UserStats({ analyses }: UserStatsProps) {
 
         {/* Best Score Card */}
         <div className="relative overflow-hidden rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer bg-gradient-to-br from-[#EE9C6C]/70 to-[#D4845A]/70">
-          <div className="absolute bottom-[-90px] right-[-80px] w-[200px] h-[200px] rounded-full bg-white/20"></div>
+          <div className="absolute bottom-[-50px] right-[-50px] w-[120px] h-[120px] sm:bottom-[-90px] sm:right-[-80px] sm:w-[200px] sm:h-[200px] rounded-full bg-white/20"></div>
           <div className="relative z-10">
             <div className="flex items-center gap-1.5 sm:gap-3 mb-2 sm:mb-3">
               <div className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-white/20">
@@ -301,7 +301,7 @@ export default function UserStats({ analyses }: UserStatsProps) {
 
         {/* Improvement Card */}
         <div className="relative overflow-hidden rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer bg-gradient-to-br from-[#58419C]/70 to-[#47337D]/70">
-          <div className="absolute bottom-[-90px] right-[-80px] w-[200px] h-[200px] rounded-full bg-white/20"></div>
+          <div className="absolute bottom-[-50px] right-[-50px] w-[120px] h-[120px] sm:bottom-[-90px] sm:right-[-80px] sm:w-[200px] sm:h-[200px] rounded-full bg-white/20"></div>
           <div className="relative z-10">
             <div className="flex items-center gap-1.5 sm:gap-3 mb-2 sm:mb-3">
               <div className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-white/20">
@@ -319,7 +319,7 @@ export default function UserStats({ analyses }: UserStatsProps) {
 
         {/* Unique Skills Card */}
         <div className="relative overflow-hidden rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer bg-gradient-to-br from-[#E95F8B]/80 to-[#D14D76]/80">
-          <div className="absolute bottom-[-90px] right-[-80px] w-[200px] h-[200px] rounded-full bg-white/20"></div>
+          <div className="absolute bottom-[-50px] right-[-50px] w-[120px] h-[120px] sm:bottom-[-90px] sm:right-[-80px] sm:w-[200px] sm:h-[200px] rounded-full bg-white/20"></div>
           <div className="relative z-10">
             <div className="flex items-center gap-1.5 sm:gap-3 mb-2 sm:mb-3">
               <div className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-white/20">
